@@ -1,0 +1,10 @@
+env_files = [
+  {path = "./.env"},
+]
+
+[config]
+default_to_workspace = false
+
+[tasks.run]
+args = ["run", "${@}"]
+command = "cargo"
