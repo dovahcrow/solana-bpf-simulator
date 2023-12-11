@@ -6,9 +6,9 @@ Download the corresponding binary from the releases first.
 
 Get the program data:
 ```shell
-solana-bpf-simulator get-program-data --program GFXsSL5sSaDfNFQUYsHekbWBW1TsFdjDYzACh62tEHxn
+solana-bpf-simulator get-program-data --program-id GFXsSL5sSaDfNFQUYsHekbWBW1TsFdjDYzACh62tEHxn
 ```
-Or prepare the program data (e.g. the *.so from cargo build-sbf) by yourself.
+Or prepare the program data (e.g. the `*.so` from `cargo build-sbf`) by yourself.
 
 Then:
 ```shell

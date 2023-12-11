@@ -84,7 +84,7 @@ fn main() {
 
 #[derive(Debug, Clone, Parser)]
 struct Simulate {
-    #[arg(long)]
+    #[arg(long, default_value = "FAKEPRoGRAM1D111111111111111111111111111111")]
     program_id: Pubkey,
 
     #[arg(long, default_value = "program.so")]
@@ -214,16 +214,16 @@ impl Simulate {
 #[derive(Debug, Clone, Parser)]
 struct GetProgramData {
     #[arg(long)]
-    program: Pubkey,
+    program_id: Pubkey,
 
     #[arg(long, default_value = "program.so")]
-    dest: PathBuf,
+    destination: PathBuf,
 }
 
 impl GetProgramData {
     #[throws(Error)]
     fn run(&self, rpc: &RpcClient) {
-        let acc = rpc.get_account(&self.program)?;
+        let acc = rpc.get_account(&self.program_id)?;
         let state: UpgradeableLoaderState = bincode::deserialize(acc.data())?;
 
         let address = match state {
@@ -238,7 +238,7 @@ impl GetProgramData {
             .create(true)
             .write(true)
             .truncate(true)
-            .open(&self.dest)?;
+            .open(&self.destination)?;
         f.write_all(acc.data())?;
     }
 }
