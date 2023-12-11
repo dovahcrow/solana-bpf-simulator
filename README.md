@@ -1,5 +1,5 @@
 # Solana Simulator
-Simulate a solana program locally without upload it.
+Simulate a solana program locally without uploading it.
 
 ## Example
 
