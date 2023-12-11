@@ -30,17 +30,12 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@1.70.0
 
-      - run: cargo build --release --all-features
+      - run: cargo build --release --bins --all-features
 
       - uses: actions/upload-artifact@v3
         with:
-          name: solana-simulator-simulate-${{ steps.system-info.outputs.platform }}-${{ env.ARCH }}
-          path: target/release/simulate
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: solana-simulator-get-program-data-${{ steps.system-info.outputs.platform }}-${{ env.ARCH }}
-          path: target/release/get_program_data
+          name: solana-bpf-simulator-${{ steps.system-info.outputs.platform }}-${{ env.ARCH }}
+          path: target/release/solana-bpf-simulator
 
   release:
     needs: build

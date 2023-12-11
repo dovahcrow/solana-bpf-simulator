@@ -1,7 +1,11 @@
 [package]
-name = "solana-simulator"
-version = "0.1.0"
+name = "solana-bpf-simulator"
+version = "0.1.1"
 edition = "2021"
+
+[[bin]]
+name = "solana-bpf-simulator"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"

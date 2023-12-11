@@ -3410,6 +3410,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-bpf-simulator"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "bs58",
+ "clap 4.1.14",
+ "fehler",
+ "getset",
+ "once_cell",
+ "serde",
+ "solana-bpf-loader-program",
+ "solana-client",
+ "solana-program-runtime",
+ "solana-runtime",
+ "solana-sdk",
+ "solana_rbpf",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "solana-bucket-map"
 version = "1.16.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4027,30 +4051,6 @@ dependencies = [
  "quote 1.0.33",
  "rustversion",
  "syn 2.0.39",
-]
-
-[[package]]
-name = "solana-simulator"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "bs58",
- "clap 4.1.14",
- "fehler",
- "getset",
- "once_cell",
- "serde",
- "solana-bpf-loader-program",
- "solana-client",
- "solana-program-runtime",
- "solana-runtime",
- "solana-sdk",
- "solana_rbpf",
- "thiserror",
- "tracing",
- "tracing-subscriber",
- "url",
 ]
 
 [[package]]
