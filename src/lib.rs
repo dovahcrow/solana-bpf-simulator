@@ -6,7 +6,7 @@ pub use errors::SolanaSimulatorError;
 pub use executor::{ExecutionRecord, SBFExecutor};
 pub use loader::AccountLoader;
 pub use solana_program_runtime::loaded_programs::{BlockRelation, ForkGraph, WorkingSlot};
-use solana_sdk::{pubkey, pubkey::Pubkey};
+use solana_sdk::{pubkey, pubkey::Pubkey, slot_history::Slot};
 
 pub const FEATURES: &'static [Pubkey] = &[
     pubkey!("E3PHP7w8kB7np3CTQ1qQ2tW3KCtjRSXBQgW9vM2mWv2Y"),
@@ -118,3 +118,14 @@ pub const FEATURES: &'static [Pubkey] = &[
     pubkey!("Hr1nUA9b7NJ6eChS26o7Vi8gYYDDwWD3YeBfzJkTbU86"),
     pubkey!("7Vced912WrRnfjaiKRiNBcbuFw7RrnLv3E3z95Y4GTNc"),
 ];
+
+pub struct WrappedSlot(pub Slot);
+impl WorkingSlot for WrappedSlot {
+    fn current_slot(&self) -> Slot {
+        self.0
+    }
+
+    fn is_ancestor(&self, _: Slot) -> bool {
+        true
+    }
+}

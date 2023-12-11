@@ -17,7 +17,7 @@ solana-bpf-simulator simulate --program program.so --program-id GFXsSL5sSaDfNFQU
 
 ## Note
 
-* The instruction data are base58 encoded.
+* The instruction data is base58 encoded.
 * Specify each account needed using `--account`.
 * Specify each writable account again using `--writable-account`.
-* Specify the signer using `--signer-account`.
+* Specify the signers again using `--signer-account`.

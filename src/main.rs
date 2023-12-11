@@ -9,7 +9,7 @@ use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
 use fehler::{throw, throws};
 use once_cell::sync::Lazy;
-use solana_bpf_simulator::{SBFExecutor, WorkingSlot, FEATURES};
+use solana_bpf_simulator::{SBFExecutor, WrappedSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
@@ -19,7 +19,6 @@ use solana_sdk::{
     message::{LegacyMessage, Message, SanitizedMessage},
     native_loader, pubkey,
     pubkey::Pubkey,
-    slot_history::Slot,
     sysvar::clock,
 };
 use tracing::{error, info};
@@ -240,16 +239,5 @@ impl GetProgramData {
             .truncate(true)
             .open(&self.destination)?;
         f.write_all(acc.data())?;
-    }
-}
-
-struct WrappedSlot(Slot);
-impl WorkingSlot for WrappedSlot {
-    fn current_slot(&self) -> Slot {
-        self.0
-    }
-
-    fn is_ancestor(&self, _: Slot) -> bool {
-        true
     }
 }
