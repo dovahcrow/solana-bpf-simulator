@@ -50,7 +50,12 @@ fn main() {
     }
     .into();
 
-    let mut data = vec![];
+    let mut data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+        slot: 0,
+        upgrade_authority_address: None,
+    })
+    .unwrap();
+    data.resize(UpgradeableLoaderState::size_of_programdata_metadata(), 0);
     File::open("target/deploy/anchor_example.so")?.read_to_end(&mut data)?;
 
     let program_data: AccountSharedData = Account {
@@ -63,7 +68,6 @@ fn main() {
     .into();
 
     let mut loader = sbf.loader(|&key| {
-        dbg!(key);
         if key == program_id {
             return Some(program.clone());
         }

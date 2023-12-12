@@ -13,6 +13,7 @@ use solana_bpf_simulator::{SBFExecutor, WrappedSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
+    account_utils::StateMut,
     bpf_loader_upgradeable::UpgradeableLoaderState,
     clock::Clock,
     instruction::{AccountMeta, Instruction},
@@ -127,7 +128,12 @@ impl Simulate {
         }
         .into();
 
-        let mut data = vec![];
+        let mut data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+            slot,
+            upgrade_authority_address: None,
+        })
+        .unwrap();
+        data.resize(UpgradeableLoaderState::size_of_programdata_metadata(), 0);
         File::open(&self.program)?.read_to_end(&mut data)?;
 
         let program_data: AccountSharedData = Account {
@@ -223,7 +229,7 @@ impl GetProgramData {
     #[throws(Error)]
     fn run(&self, rpc: &RpcClient) {
         let acc = rpc.get_account(&self.program_id)?;
-        let state: UpgradeableLoaderState = bincode::deserialize(acc.data())?;
+        let state: UpgradeableLoaderState = acc.state()?;
 
         let address = match state {
             UpgradeableLoaderState::Program {
@@ -238,6 +244,6 @@ impl GetProgramData {
             .write(true)
             .truncate(true)
             .open(&self.destination)?;
-        f.write_all(acc.data())?;
+        f.write_all(&acc.data()[UpgradeableLoaderState::size_of_programdata_metadata()..])?;
     }
 }
