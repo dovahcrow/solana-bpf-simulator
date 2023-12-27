@@ -1,7 +1,4 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::{atomic::Ordering, Arc},
-};
+use std::sync::{atomic::Ordering, Arc};
 
 use anyhow::Error;
 use fehler::throws;
@@ -33,49 +30,51 @@ where
         I: IntoIterator<Item = &'b SanitizedMessage>,
         S: WorkingSlot,
     {
-        let mut programs_and_slots = HashMap::new();
-
+        let mut missing_programs: Vec<(Pubkey, (LoadedProgramMatchCriteria, u64))> = vec![];
         for msg in messages {
             for &key in msg.account_keys().iter() {
                 let acc = self
                     .get_account(&key)?
                     .ok_or(TransactionError::AccountNotFound)?;
                 if self.program_owners.contains(&acc.owner()) {
-                    match programs_and_slots.entry(key) {
-                        Entry::Vacant(e) => {
-                            e.insert((LoadedProgramMatchCriteria::NoCriteria, 0));
-                        }
-                        Entry::Occupied(mut e) => e.get_mut().1 += 1,
+                    if let Err(i) = missing_programs.binary_search_by_key(&key, |(key, _)| *key) {
+                        missing_programs
+                            .insert(i, (key, (LoadedProgramMatchCriteria::NoCriteria, 0)));
                     }
                 }
             }
         }
         for builtin_program in self.builtin_programs.iter() {
-            programs_and_slots.insert(
-                *builtin_program,
-                (LoadedProgramMatchCriteria::NoCriteria, 0),
-            );
+            if let Err(i) = missing_programs.binary_search_by_key(builtin_program, |(key, _)| *key)
+            {
+                missing_programs.insert(
+                    i,
+                    (
+                        *builtin_program,
+                        (LoadedProgramMatchCriteria::NoCriteria, 0),
+                    ),
+                );
+            }
         }
 
-        let (mut loaded_programs_for_txs, missing_programs) = {
-            // Lock the global cache to figure out which programs need to be loaded
-            self.loaded_programs
-                .extract(s, programs_and_slots.into_iter())
-        };
+        let mut loaded_programs_for_txs = LoadedProgramsForTxBatch::new(s.current_slot());
 
-        let slot = s.current_slot();
+        // Lock the global cache to figure out which programs need to be loaded
+        loaded_programs_for_txs
+            .merge_consuming(self.loaded_programs.extract(s, &mut missing_programs));
 
-        // Load missing programs while global cache is unlocked
-        let mut loaded_missing_programs = vec![];
-        for (key, count) in missing_programs {
-            let program = self.load_program(slot, &key)?;
-            program.tx_usage_counter.store(count, Ordering::Relaxed);
-            loaded_missing_programs.push((key, program))
-        }
+        let loaded_programs: Vec<(Pubkey, Arc<LoadedProgram>)> = missing_programs
+            .iter()
+            .map(|(key, (_match_criteria, count))| {
+                let program = self.load_program(s.current_slot(), key)?;
+                program.tx_usage_counter.store(*count, Ordering::Relaxed);
+                Result::<_, Error>::Ok((*key, program))
+            })
+            .collect::<Result<_, _>>()?;
+        missing_programs.clear();
 
-        // Lock the global cache again to replenish the missing programs
-        for (key, program) in loaded_missing_programs {
-            let (_was_occupied, entry) = self.loaded_programs.replenish(key, program);
+        for (key, program) in loaded_programs {
+            let (_, entry) = self.loaded_programs.replenish(key, program);
             // Use the returned entry as that might have been deduplicated globally
             loaded_programs_for_txs.replenish(key, entry);
         }

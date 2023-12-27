@@ -12,3 +12,11 @@ codegen-units = 1
 opt-level = 3
 incremental = false
 codegen-units = 1
+
+# [patch.crates-io]
+# solana-bpf-loader-program = { path = "../../../solana-mole/programs/bpf_loader" }
+# solana-client = { path = "../../../solana-mole/client" }
+# solana-program-runtime = { path = "../../../solana-mole/program-runtime" }
+# solana-program = { path = "../../../solana-mole/sdk/program" }
+# solana-runtime = { path = "../../../solana-mole/runtime" }
+# solana-sdk = { path = "../../../solana-mole/sdk" }
