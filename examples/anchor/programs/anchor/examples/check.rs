@@ -8,7 +8,6 @@ use solana_bpf_simulator::{SBFExecutor, WrappedSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
-    bpf_loader_upgradeable::UpgradeableLoaderState,
     clock::Clock,
     instruction::Instruction,
     message::{LegacyMessage, Message, SanitizedMessage},
@@ -35,33 +34,15 @@ fn main() {
     let slot = clock.slot;
     sbf.sysvar_cache_mut().set_clock(clock);
 
-    let bpf_upgradable_loader = pubkey!("BPFLoaderUpgradeab1e11111111111111111111111");
     let program_id = pubkey!("DUMMYPRoGRAM1111111111111111111111111111111");
-    let programdata_address = pubkey!("DUMMYPRoGRAMDATA111111111111111111111111111");
 
-    let program: AccountSharedData = Account {
-        lamports: 0,
-        data: bincode::serialize(&UpgradeableLoaderState::Program {
-            programdata_address,
-        })?,
-        owner: bpf_upgradable_loader,
-        executable: true,
-        rent_epoch: 0,
-    }
-    .into();
-
-    let mut data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
-        slot: 0,
-        upgrade_authority_address: None,
-    })
-    .unwrap();
-    data.resize(UpgradeableLoaderState::size_of_programdata_metadata(), 0);
+    let mut data = vec![];
     File::open("target/deploy/anchor_example.so")?.read_to_end(&mut data)?;
 
     let program_data: AccountSharedData = Account {
         lamports: 0,
         data,
-        owner: bpf_upgradable_loader,
+        owner: solana_sdk::bpf_loader::id(),
         executable: true,
         rent_epoch: 0,
     }
@@ -69,10 +50,6 @@ fn main() {
 
     let mut loader = sbf.loader(|&key| {
         if key == program_id {
-            return Some(program.clone());
-        }
-
-        if key == programdata_address {
             return Some(program_data.clone());
         }
 

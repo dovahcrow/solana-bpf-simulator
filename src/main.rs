@@ -8,17 +8,16 @@ use std::{
 use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
 use fehler::{throw, throws};
-use once_cell::sync::Lazy;
 use solana_bpf_simulator::{SBFExecutor, WrappedSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
     account_utils::StateMut,
-    bpf_loader_upgradeable::UpgradeableLoaderState,
+    bpf_loader,
+    bpf_loader_upgradeable::{self, UpgradeableLoaderState},
     clock::Clock,
     instruction::{AccountMeta, Instruction},
     message::{LegacyMessage, Message, SanitizedMessage},
-    native_loader, pubkey,
     pubkey::Pubkey,
     sysvar::clock,
 };
@@ -30,17 +29,6 @@ use tracing_subscriber::{
     Registry,
 };
 use url::Url;
-
-static BPF_LOADER: Lazy<AccountSharedData> = Lazy::new(|| {
-    Account {
-        owner: native_loader::ID,
-        executable: true,
-        rent_epoch: 0,
-        data: b"solana_bpf_loader_upgradeable_program".to_vec(),
-        lamports: 1,
-    }
-    .into()
-});
 
 #[derive(Parser)]
 struct Cli {
@@ -114,32 +102,13 @@ impl Simulate {
         let slot = clock.slot;
         sbf.sysvar_cache_mut().set_clock(clock);
 
-        let bpf_upgradable_loader = pubkey!("BPFLoaderUpgradeab1e11111111111111111111111");
-        let programdata_address = pubkey!("DUMMYPRoGRAMDATA111111111111111111111111111");
-
-        let program: AccountSharedData = Account {
-            lamports: 0,
-            data: bincode::serialize(&UpgradeableLoaderState::Program {
-                programdata_address,
-            })?,
-            owner: bpf_upgradable_loader,
-            executable: true,
-            rent_epoch: 0,
-        }
-        .into();
-
-        let mut data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
-            slot,
-            upgrade_authority_address: None,
-        })
-        .unwrap();
-        data.resize(UpgradeableLoaderState::size_of_programdata_metadata(), 0);
+        let mut data = vec![];
         File::open(&self.program)?.read_to_end(&mut data)?;
 
         let program_data: AccountSharedData = Account {
-            lamports: 0,
+            lamports: 1,
             data,
-            owner: bpf_upgradable_loader,
+            owner: bpf_loader::id(),
             executable: true,
             rent_epoch: 0,
         }
@@ -147,15 +116,7 @@ impl Simulate {
 
         let mut accounts: HashMap<Pubkey, AccountSharedData> = HashMap::new();
         let mut loader = sbf.loader(|&key| {
-            if key == pubkey!("BPFLoaderUpgradeab1e11111111111111111111111") {
-                return Some(BPF_LOADER.clone());
-            }
-
             if key == self.program_id {
-                return Some(program.clone());
-            }
-
-            if key == programdata_address {
                 return Some(program_data.clone());
             }
 
@@ -228,22 +189,28 @@ struct GetProgramData {
 impl GetProgramData {
     #[throws(Error)]
     fn run(&self, rpc: &RpcClient) {
-        let acc = rpc.get_account(&self.program_id)?;
-        let state: UpgradeableLoaderState = acc.state()?;
-
-        let address = match state {
-            UpgradeableLoaderState::Program {
-                programdata_address,
-            } => programdata_address,
-            _ => throw!(anyhow!("Wrong state")),
-        };
-        let acc = rpc.get_account(&address)?;
-
         let mut f = OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
             .open(&self.destination)?;
-        f.write_all(&acc.data()[UpgradeableLoaderState::size_of_programdata_metadata()..])?;
+
+        let acc = rpc.get_account(&self.program_id)?;
+        if bpf_loader_upgradeable::check_id(acc.owner()) {
+            let state: UpgradeableLoaderState = acc.state()?;
+
+            let address = match state {
+                UpgradeableLoaderState::Program {
+                    programdata_address,
+                } => programdata_address,
+                _ => throw!(anyhow!("Wrong state")),
+            };
+            let acc = rpc.get_account(&address)?;
+            f.write_all(&acc.data()[UpgradeableLoaderState::size_of_programdata_metadata()..])?;
+        } else if bpf_loader::check_id(acc.owner()) {
+            f.write_all(&acc.data())?;
+        } else {
+            throw!(anyhow!("Unknown owner for the program"))
+        };
     }
 }
