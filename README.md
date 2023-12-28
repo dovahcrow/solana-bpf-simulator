@@ -25,3 +25,7 @@ solana-bpf-simulator simulate --program program.so --program-id GFXsSL5sSaDfNFQU
 ## Anchor Users
 
 If you use [Anchor](https://github.com/coral-xyz/anchor), there is an [example](examples/anchor) in the [examples](examples) folder.
+
+## 1.17 users
+
+Please use the 1.17 branch.
