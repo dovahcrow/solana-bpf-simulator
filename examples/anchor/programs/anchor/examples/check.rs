@@ -4,7 +4,7 @@ use anchor_lang::{InstructionData, ToAccountMetas};
 use anyhow::Error;
 use clap::Parser;
 use fehler::throws;
-use solana_bpf_simulator::{SBFExecutor, WrappedSlot, FEATURES};
+use solana_bpf_simulator::{SBPFExecutor, WorkingSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
@@ -26,7 +26,7 @@ fn main() {
     let cli = Cli::parse();
     let rpc = RpcClient::new(cli.solana_rpc.to_string());
 
-    let mut sbf = SBFExecutor::new(FEATURES).unwrap();
+    let mut sbf = SBPFExecutor::new(FEATURES).unwrap();
 
     let clock = rpc.get_account(&clock::id())?;
     let clock: Clock = bincode::deserialize(&clock.data())?;
@@ -65,8 +65,8 @@ fn main() {
     let ix = Instruction::new_with_bytes(program_id, &ix_data, accounts);
     let message = Message::new(&[ix], None);
     let message = SanitizedMessage::Legacy(LegacyMessage::new(message));
-    let loaded_transaction = loader.load_transaction_account(&message)?;
-    let loaded_programs = loader.load_programs(&WrappedSlot(slot), [&message])?;
+    let loaded_transaction = loader.load_transaction_accounts(&message)?;
+    let loaded_programs = loader.replenish_program_cache(&WorkingSlot(slot), [&message])?;
 
     sbf.record_log();
     let res = sbf.process(slot, &message, loaded_transaction, &loaded_programs);

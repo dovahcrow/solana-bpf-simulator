@@ -5,29 +5,29 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{anyhow, Error};
+use anyhow::Error;
 use fehler::throws;
 use getset::{Getters, MutGetters};
-use solana_bpf_loader_program::syscalls::create_program_runtime_environment;
+use solana_accounts_db::accounts::LoadedTransaction;
+use solana_bpf_loader_program::syscalls::create_program_runtime_environment_v1;
+use solana_loader_v4_program::create_program_runtime_environment_v2;
 use solana_program_runtime::{
     compute_budget::ComputeBudget,
-    invoke_context::InvokeContext,
     loaded_programs::{LoadedProgram, LoadedPrograms, LoadedProgramsForTxBatch},
     log_collector::LogCollector,
+    message_processor::MessageProcessor,
     sysvar_cache::SysvarCache,
     timings::ExecuteTimings,
 };
-use solana_rbpf::vm::BuiltinProgram;
-use solana_runtime::{
-    accounts::LoadedTransaction, builtins::BUILTINS, message_processor::MessageProcessor,
-};
+use solana_runtime::builtins::BUILTINS;
 use solana_sdk::{
     account::AccountSharedData, bpf_loader, bpf_loader_deprecated, bpf_loader_upgradeable,
-    feature_set::FeatureSet, message::SanitizedMessage, pubkey::Pubkey, rent::Rent,
-    slot_history::Slot, transaction_context::TransactionContext,
+    epoch_schedule::DEFAULT_SLOTS_PER_EPOCH, feature_set::FeatureSet, loader_v4,
+    message::SanitizedMessage, pubkey::Pubkey, rent::Rent, slot_history::Slot,
+    transaction_context::TransactionContext,
 };
 
-use crate::AccountLoader;
+use crate::{AccountLoader, ForkGraph};
 
 #[derive(Debug)]
 pub struct ExecutionRecord {
@@ -37,20 +37,19 @@ pub struct ExecutionRecord {
 }
 
 #[derive(Getters, MutGetters)]
-pub struct SBFExecutor {
+pub struct SBPFExecutor {
     pub(crate) feature_set: Arc<FeatureSet>,
     #[getset(get_mut = "pub", get = "pub")]
     sysvar_cache: SysvarCache,
     pub(crate) logger: Option<Rc<RefCell<LogCollector>>>,
-    pub(crate) environment: Arc<BuiltinProgram<InvokeContext<'static>>>,
     pub(crate) program_owners: HashSet<Pubkey>, // a set of program loaders that owns all the programs (except for native)
     pub(crate) builtin_programs: HashSet<Pubkey>,
-    pub(crate) loaded_programs: LoadedPrograms,
+    pub(crate) loaded_programs: LoadedPrograms<ForkGraph>,
 }
 
-unsafe impl Send for SBFExecutor {}
+unsafe impl Send for SBPFExecutor {}
 
-impl SBFExecutor {
+impl SBPFExecutor {
     #[throws(Error)]
     pub fn new(enabled_features: &[Pubkey]) -> Self {
         let mut features = FeatureSet::default();
@@ -58,24 +57,29 @@ impl SBFExecutor {
             features.activate(&feat, 0);
         }
 
-        let environment =
-            create_program_runtime_environment(&features, &Default::default(), false, false)
-                .map_err(|e| anyhow!("{}", e))?;
-
         let program_owners = HashSet::from_iter(vec![
+            loader_v4::id(),
             bpf_loader_upgradeable::id(),
             bpf_loader::id(),
             bpf_loader_deprecated::id(),
         ]);
 
+        let mut loaded_programs = LoadedPrograms::new(DEFAULT_SLOTS_PER_EPOCH, 1);
+
+        loaded_programs.environments.program_runtime_v1 = Arc::new(
+            create_program_runtime_environment_v1(&features, &Default::default(), false, false)
+                .unwrap(),
+        );
+        loaded_programs.environments.program_runtime_v2 = Arc::new(
+            create_program_runtime_environment_v2(&Default::default(), false),
+        );
+
         let mut this = Self {
             feature_set: Arc::new(features),
             sysvar_cache: SysvarCache::default(),
-            // logger: None,
             logger: Some(LogCollector::new_ref()),
-            environment: Arc::new(environment),
             program_owners,
-            loaded_programs: LoadedPrograms::default(),
+            loaded_programs,
             builtin_programs: HashSet::new(),
         };
 
@@ -130,19 +134,14 @@ impl SBFExecutor {
         loaded_programs: &LoadedProgramsForTxBatch,
     ) -> ExecutionRecord {
         let compute_budget = ComputeBudget::default();
-        let mut transaction_context = TransactionContext::new(
-            loaded_transaction.accounts,
-            // Some(Rent::default()),
-            None,
-            10,
-            usize::MAX,
-        );
+        let mut transaction_context =
+            TransactionContext::new(loaded_transaction.accounts, None, 10, usize::MAX);
 
         let mut units = 0;
         let mut timing = ExecuteTimings::default();
 
-        let mut p1 = LoadedProgramsForTxBatch::new(slot);
-        let mut p2 = LoadedProgramsForTxBatch::new(slot);
+        let mut p1 = LoadedProgramsForTxBatch::new(slot, self.loaded_programs.environments.clone());
+        let mut p2 = LoadedProgramsForTxBatch::new(slot, self.loaded_programs.environments.clone());
         MessageProcessor::process_message(
             message,
             &loaded_transaction.program_indices,

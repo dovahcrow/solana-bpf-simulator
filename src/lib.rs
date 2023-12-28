@@ -2,11 +2,18 @@ mod errors;
 mod executor;
 mod loader;
 
+use std::cmp::Ordering;
+
 pub use errors::SolanaSimulatorError;
-pub use executor::{ExecutionRecord, SBFExecutor};
+pub use executor::{ExecutionRecord, SBPFExecutor};
 pub use loader::AccountLoader;
-pub use solana_program_runtime::loaded_programs::{BlockRelation, ForkGraph, WorkingSlot};
-use solana_sdk::{pubkey, pubkey::Pubkey, slot_history::Slot};
+pub use solana_program_runtime::loaded_programs::BlockRelation;
+
+use solana_program_runtime::loaded_programs;
+use solana_sdk::{
+    epoch_schedule::DEFAULT_SLOTS_PER_EPOCH, pubkey, pubkey::Pubkey, slot_history::Slot,
+    stake_history::Epoch,
+};
 
 pub const FEATURES: &'static [Pubkey] = &[
     pubkey!("E3PHP7w8kB7np3CTQ1qQ2tW3KCtjRSXBQgW9vM2mWv2Y"),
@@ -119,13 +126,33 @@ pub const FEATURES: &'static [Pubkey] = &[
     pubkey!("7Vced912WrRnfjaiKRiNBcbuFw7RrnLv3E3z95Y4GTNc"),
 ];
 
-pub struct WrappedSlot(pub Slot);
-impl WorkingSlot for WrappedSlot {
+pub struct WorkingSlot(pub Slot);
+impl loaded_programs::WorkingSlot for WorkingSlot {
     fn current_slot(&self) -> Slot {
         self.0
     }
 
-    fn is_ancestor(&self, _: Slot) -> bool {
-        true
+    fn current_epoch(&self) -> Epoch {
+        self.0 / DEFAULT_SLOTS_PER_EPOCH
+    }
+
+    fn is_ancestor(&self, slot: Slot) -> bool {
+        slot < self.0
+    }
+}
+
+pub struct ForkGraph;
+
+impl loaded_programs::ForkGraph for ForkGraph {
+    fn relationship(&self, a: Slot, b: Slot) -> BlockRelation {
+        match a.cmp(&b) {
+            Ordering::Equal => BlockRelation::Equal,
+            Ordering::Less => BlockRelation::Ancestor,
+            Ordering::Greater => BlockRelation::Descendant,
+        }
+    }
+
+    fn slot_epoch(&self, slot: Slot) -> Option<Epoch> {
+        Some(slot / DEFAULT_SLOTS_PER_EPOCH)
     }
 }
