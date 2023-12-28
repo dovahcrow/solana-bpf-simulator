@@ -9,7 +9,10 @@ pub use loader::AccountLoader;
 use std::cmp::Ordering;
 
 use solana_program_runtime::loaded_programs::{self, BlockRelation};
-use solana_sdk::{pubkey, pubkey::Pubkey, slot_history::Slot};
+use solana_sdk::{
+    epoch_schedule::DEFAULT_SLOTS_PER_EPOCH, pubkey, pubkey::Pubkey, slot_history::Slot,
+    stake_history::Epoch,
+};
 
 pub const FEATURES: &'static [Pubkey] = &[
     pubkey!("E3PHP7w8kB7np3CTQ1qQ2tW3KCtjRSXBQgW9vM2mWv2Y"),
@@ -128,6 +131,10 @@ impl loaded_programs::WorkingSlot for WorkingSlot {
         self.0
     }
 
+    fn current_epoch(&self) -> Epoch {
+        self.0 / DEFAULT_SLOTS_PER_EPOCH
+    }
+
     fn is_ancestor(&self, slot: Slot) -> bool {
         slot < self.0
     }
@@ -142,5 +149,9 @@ impl loaded_programs::ForkGraph for ForkGraph {
             Ordering::Less => BlockRelation::Ancestor,
             Ordering::Greater => BlockRelation::Descendant,
         }
+    }
+
+    fn slot_epoch(&self, slot: Slot) -> Option<Epoch> {
+        Some(slot / DEFAULT_SLOTS_PER_EPOCH)
     }
 }

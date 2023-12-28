@@ -159,8 +159,8 @@ impl Simulate {
         );
         let message = Message::new(&[ix], None);
         let message = SanitizedMessage::Legacy(LegacyMessage::new(message));
-        let loaded_transaction = loader.load_transaction_account(&message)?;
-        let loaded_programs = loader.load_programs(&WorkingSlot(slot), [&message])?;
+        let loaded_transaction = loader.load_transaction_accounts(&message)?;
+        let loaded_programs = loader.replenish_program_cache(&WorkingSlot(slot), [&message])?;
 
         sbf.record_log();
         let res = sbf.process(slot, &message, loaded_transaction, &loaded_programs);

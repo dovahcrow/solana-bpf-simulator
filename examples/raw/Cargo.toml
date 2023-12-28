@@ -15,14 +15,14 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-solana-program = "~1.16"
+solana-program = "~1.17"
 
 [dev-dependencies]
 anyhow = "1"
 fehler = "1"
 clap = { version = "4", features = [ "derive" ]}
-solana-sdk = "~1.16"
-solana-client = "~1.16"
+solana-sdk = "~1.17"
+solana-client = "~1.17"
 solana-bpf-simulator = { path = "../../" }
 solana-program-runtime = "~1.16"
 bincode = "1"
