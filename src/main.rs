@@ -8,7 +8,7 @@ use std::{
 use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
 use fehler::{throw, throws};
-use solana_bpf_simulator::{SBFExecutor, WrappedSlot, FEATURES};
+use solana_bpf_simulator::{SBPFMessageExecutor, WorkingSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
@@ -94,7 +94,7 @@ struct Simulate {
 impl Simulate {
     #[throws(Error)]
     fn run(&self, rpc: &RpcClient) {
-        let mut sbf = SBFExecutor::new(FEATURES).unwrap();
+        let mut sbf = SBPFMessageExecutor::new(FEATURES).unwrap();
 
         let clock = rpc.get_account(&clock::id())?;
         let clock: Clock = bincode::deserialize(&clock.data())?;
@@ -160,7 +160,7 @@ impl Simulate {
         let message = Message::new(&[ix], None);
         let message = SanitizedMessage::Legacy(LegacyMessage::new(message));
         let loaded_transaction = loader.load_transaction_account(&message)?;
-        let loaded_programs = loader.load_programs(&WrappedSlot(slot), [&message])?;
+        let loaded_programs = loader.load_programs(&WorkingSlot(slot), [&message])?;
 
         sbf.record_log();
         let res = sbf.process(slot, &message, loaded_transaction, &loaded_programs);

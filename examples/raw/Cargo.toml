@@ -1,0 +1,36 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "example"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+solana-program = "~1.16"
+
+[dev-dependencies]
+anyhow = "1"
+fehler = "1"
+clap = { version = "4", features = [ "derive" ]}
+solana-sdk = "~1.16"
+solana-client = "~1.16"
+solana-bpf-simulator = { path = "../../" }
+bincode = "1"
+
+# [patch.crates-io]
+# solana-bpf-loader-program = { path = "../../../solana-mole/programs/bpf_loader" }
+# solana-client = { path = "../../../solana-mole/client" }
+# solana-program-runtime = { path = "../../../solana-mole/program-runtime" }
+# solana-program = { path = "../../../solana-mole/sdk/program" }
+# solana-runtime = { path = "../../../solana-mole/runtime" }
+# solana-sdk = { path = "../../../solana-mole/sdk" }
+# solana_rbpf = { path = "../../../rbpf" }

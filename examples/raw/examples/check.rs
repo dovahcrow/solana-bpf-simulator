@@ -1,11 +1,11 @@
 use std::{fs::File, io::Read};
 
-use anchor_lang::{InstructionData, ToAccountMetas};
 use anyhow::Error;
 use clap::Parser;
 use fehler::throws;
 use solana_bpf_simulator::{SBPFInstructionExecutor, SBPFMessageExecutor, WorkingSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
+use solana_program::instruction::AccountMeta;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
     clock::Clock,
@@ -42,34 +42,29 @@ fn run_ro(cli: Cli) {
     let program_id = pubkey!("DUMMYPRoGRAM1111111111111111111111111111111");
 
     let mut data = vec![];
-    File::open("target/deploy/anchor_example.so")?.read_to_end(&mut data)?;
+    File::open("target/deploy/example.so")?.read_to_end(&mut data)?;
 
     let program_data: AccountSharedData = Account {
-        lamports: 0,
         data,
-        owner: solana_sdk::bpf_loader::id(),
-        executable: true,
-        rent_epoch: 0,
+        ..Default::default()
     }
     .into();
 
-    let ix_data = anchor_example::instruction::Initialize {}.data();
+    let accounts = vec![(
+        AccountMeta::new_readonly(system_program::ID, false),
+        rpc.get_account(&system_program::ID).unwrap_or_default(),
+    )];
 
-    let accounts = anchor_example::accounts::Initialize {
-        account: system_program::ID,
-    }
-    .to_account_metas(None);
-    let accounts: Vec<_> = accounts
-        .into_iter()
-        .map(|meta| {
-            let key = meta.pubkey;
-            (meta, rpc.get_account(&key).unwrap_or_default())
-        })
-        .collect();
+    let mut exe = SBPFInstructionExecutor::new(
+        41,
+        Vec::from_iter(accounts.iter().map(|(_, a)| a.data().len())),
+    )?;
 
-    let mut exe = SBPFInstructionExecutor::new(40, (1, 120))?;
     exe.update_program(&program_id, &program_data, true)?;
+
+    let ix_data = vec![1, 2, 3, 4];
     exe.update_instruction(&ix_data)?;
+
     for (i, (meta, account)) in accounts.into_iter().enumerate() {
         exe.update_account(
             i,
@@ -119,7 +114,7 @@ fn run_full(cli: Cli) {
     let program_id = pubkey!("DUMMYPRoGRAM1111111111111111111111111111111");
 
     let mut data = vec![];
-    File::open("target/deploy/anchor_example.so")?.read_to_end(&mut data)?;
+    File::open("target/deploy/example.so")?.read_to_end(&mut data)?;
 
     let program_data: AccountSharedData = Account {
         lamports: 0,
@@ -139,11 +134,8 @@ fn run_full(cli: Cli) {
         return Some(account.into());
     });
 
-    let ix_data = anchor_example::instruction::Initialize {}.data();
-    let accounts = anchor_example::accounts::Initialize {
-        account: system_program::ID,
-    }
-    .to_account_metas(None);
+    let ix_data = vec![1, 2, 3, 4];
+    let accounts = vec![AccountMeta::new_readonly(system_program::ID, false)];
     let ix = Instruction::new_with_bytes(program_id, &ix_data, accounts);
     let message = Message::new(&[ix], None);
     let message = SanitizedMessage::Legacy(LegacyMessage::new(message));

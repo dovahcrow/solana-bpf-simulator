@@ -17,7 +17,7 @@ use solana_program_runtime::{
     sysvar_cache::SysvarCache,
     timings::ExecuteTimings,
 };
-use solana_rbpf::vm::BuiltinProgram;
+use solana_rbpf06::vm::BuiltinProgram;
 use solana_runtime::{
     accounts::LoadedTransaction, builtins::BUILTINS, message_processor::MessageProcessor,
 };
@@ -27,7 +27,7 @@ use solana_sdk::{
     slot_history::Slot, transaction_context::TransactionContext,
 };
 
-use crate::AccountLoader;
+use super::AccountLoader;
 
 #[derive(Debug)]
 pub struct ExecutionRecord {
@@ -37,7 +37,7 @@ pub struct ExecutionRecord {
 }
 
 #[derive(Getters, MutGetters)]
-pub struct SBFExecutor {
+pub struct SBPFMessageExecutor {
     pub(crate) feature_set: Arc<FeatureSet>,
     #[getset(get_mut = "pub", get = "pub")]
     sysvar_cache: SysvarCache,
@@ -48,9 +48,9 @@ pub struct SBFExecutor {
     pub(crate) loaded_programs: LoadedPrograms,
 }
 
-unsafe impl Send for SBFExecutor {}
+unsafe impl Send for SBPFMessageExecutor {}
 
-impl SBFExecutor {
+impl SBPFMessageExecutor {
     #[throws(Error)]
     pub fn new(enabled_features: &[Pubkey]) -> Self {
         let mut features = FeatureSet::default();

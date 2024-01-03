@@ -4,11 +4,11 @@ mod transaction_loader;
 use anyhow::Error;
 use fehler::throws;
 use solana_program_runtime::{invoke_context::InvokeContext, loaded_programs::LoadedPrograms};
-use solana_rbpf::vm::BuiltinProgram;
+use solana_rbpf06::vm::BuiltinProgram;
 use solana_sdk::{account::AccountSharedData, feature_set::FeatureSet, pubkey::Pubkey};
 use std::{collections::HashSet, sync::Arc};
 
-use crate::SBFExecutor;
+use super::SBPFMessageExecutor;
 
 pub struct AccountLoader<'a, G> {
     g: G,
@@ -38,7 +38,7 @@ impl<'a, G> AccountLoader<'a, G> {
         }
     }
 
-    pub fn from_executor(g: G, e: &'a mut SBFExecutor) -> Self {
+    pub fn from_executor(g: G, e: &'a mut SBPFMessageExecutor) -> Self {
         Self::new(
             g,
             &mut e.loaded_programs,
