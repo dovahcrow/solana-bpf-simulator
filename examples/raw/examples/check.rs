@@ -6,6 +6,7 @@ use fehler::throws;
 use solana_bpf_simulator::{SBPFInstructionExecutor, SBPFMessageExecutor, WorkingSlot, FEATURES};
 use solana_client::rpc_client::RpcClient;
 use solana_program::instruction::AccountMeta;
+use solana_program_runtime::log_collector::LogCollector;
 use solana_sdk::{
     account::{Account, AccountSharedData, ReadableAccount},
     clock::Clock,
@@ -75,6 +76,7 @@ fn run_ro(cli: Cli) {
             false,
         )?;
     }
+    *exe.context_mut().log_collector_mut() = Some(LogCollector::new_ref());
 
     if let Err(e) = exe.execute() {
         println!(

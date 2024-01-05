@@ -1316,6 +1316,7 @@ dependencies = [
  "solana-bpf-simulator",
  "solana-client",
  "solana-program",
+ "solana-program-runtime",
  "solana-sdk",
 ]
 

@@ -24,6 +24,7 @@ clap = { version = "4", features = [ "derive" ]}
 solana-sdk = "~1.16"
 solana-client = "~1.16"
 solana-bpf-simulator = { path = "../../" }
+solana-program-runtime = "~1.16"
 bincode = "1"
 
 # [patch.crates-io]

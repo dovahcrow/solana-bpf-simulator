@@ -19,7 +19,7 @@ use solana_rbpf::{
     vm::{Config, EbpfVm},
 };
 use solana_sdk::{
-    account::{AccountSharedData, ReadableAccount},
+    account::{Account, AccountSharedData, ReadableAccount},
     entrypoint::{BPF_ALIGN_OF_U128, HEAP_LENGTH, MAX_PERMITTED_DATA_INCREASE, NON_DUP_MARKER},
     instruction::InstructionError,
     pubkey::Pubkey,
@@ -248,9 +248,48 @@ where
         Some(return_data)
     }
 
-    // pub fn get_account(&self, i: usize) -> Account {
+    pub fn get_account(&self, i: usize) -> Account {
+        let mut offset = self.account_offsets[i] + 3;
+        let executable = self.buffer.as_slice()[offset] == 1;
+        offset += 37;
 
-    // }
+        let owner = Pubkey::try_from(&self.buffer.as_slice()[offset..offset + 32]).unwrap();
+        offset += 32;
+
+        let lamports = u64::from_le_bytes(
+            self.buffer.as_slice()[offset..offset + 8]
+                .try_into()
+                .unwrap(),
+        );
+        offset += 8;
+
+        let data_len = u64::from_le_bytes(
+            self.buffer.as_slice()[offset..offset + 8]
+                .try_into()
+                .unwrap(),
+        ) as usize;
+        offset += 8;
+
+        let data = self.buffer.as_slice()[offset..offset + data_len].to_vec();
+        offset += data_len;
+
+        let align_offset = (data_len as *const u8).align_offset(BPF_ALIGN_OF_U128);
+        offset += align_offset + MAX_PERMITTED_DATA_INCREASE;
+
+        let rent_epoch = u64::from_le_bytes(
+            self.buffer.as_slice()[offset..offset + 8]
+                .try_into()
+                .unwrap(),
+        );
+
+        Account {
+            owner,
+            lamports,
+            data,
+            executable,
+            rent_epoch,
+        }
+    }
 
     fn fill_write(
         buffer: &mut AlignedMemory<HOST_ALIGN>,
