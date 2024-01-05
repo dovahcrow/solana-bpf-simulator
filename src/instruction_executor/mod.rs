@@ -19,7 +19,7 @@ use solana_rbpf::{
     vm::{Config, EbpfVm},
 };
 use solana_sdk::{
-    account::{Account, AccountSharedData, ReadableAccount},
+    account::{Account, ReadableAccount},
     entrypoint::{BPF_ALIGN_OF_U128, HEAP_LENGTH, MAX_PERMITTED_DATA_INCREASE, NON_DUP_MARKER},
     instruction::InstructionError,
     pubkey::Pubkey,
@@ -134,7 +134,10 @@ where
     }
 
     #[throws(Error)]
-    pub fn update_program(&mut self, program_id: &Pubkey, account: &AccountSharedData, jit: bool) {
+    pub fn update_program<T>(&mut self, program_id: &Pubkey, account: &T, jit: bool)
+    where
+        T: ReadableAccount,
+    {
         let mut executable = Executable::from_elf(&account.data(), self.runtime.clone())
             .map_err(|e| anyhow!("{}", e))?;
         if jit {
@@ -169,15 +172,17 @@ where
     }
 
     #[throws(Error)]
-    pub fn update_account(
+    pub fn update_account<T>(
         &mut self,
         i: usize,
         key: &Pubkey,
-        account: &AccountSharedData,
+        account: &T,
         is_signer: bool,
         is_writable: bool,
         is_executable: bool,
-    ) {
+    ) where
+        T: ReadableAccount,
+    {
         let account_size = self.account_sizes.size(i);
         if account.data().len() > account_size {
             throw!(FasterSBPFExecutorError::InvalidAccount);
@@ -342,16 +347,19 @@ where
     }
 
     #[throws(Error)]
-    fn write_account(
+    fn write_account<T>(
         buffer: &mut AlignedMemory<HOST_ALIGN>,
         account_size: usize,
         mut at: Option<usize>,
         key: &Pubkey,
-        account: &AccountSharedData,
+        account: &T,
         is_signer: bool,
         is_writable: bool,
         is_executable: bool,
-    ) -> usize {
+    ) -> usize
+    where
+        T: ReadableAccount,
+    {
         let next = Self::write::<u8>(buffer, at, NON_DUP_MARKER);
         at = at.map(|_| next);
         let next = Self::write::<u8>(buffer, at, is_signer as u8);
