@@ -3,6 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use getset::{Getters, MutGetters};
 use solana_program_runtime::{log_collector::LogCollector, sysvar_cache::SysvarCache};
 use solana_rbpf::vm::ContextObject;
+use solana_sdk::pubkey::Pubkey;
 
 #[derive(MutGetters, Getters)]
 pub struct InvokeContext {
@@ -11,6 +12,10 @@ pub struct InvokeContext {
     instruction_remaining: u64,
     #[getset(get_mut = "pub", get = "pub")]
     log_collector: Option<Rc<RefCell<LogCollector>>>,
+    #[getset(get_mut = "pub", get = "pub")]
+    program_id: Pubkey,
+    #[getset(get_mut = "pub", get = "pub")]
+    return_data: (Pubkey, Vec<u8>),
 }
 
 impl InvokeContext {
@@ -18,7 +23,9 @@ impl InvokeContext {
         Self {
             sysvars: SysvarCache::default(),
             instruction_remaining: u64::MAX / 256,
-            log_collector: Some(LogCollector::new_ref()),
+            log_collector: None,
+            program_id: Pubkey::default(),
+            return_data: (Pubkey::default(), vec![]),
         }
     }
 

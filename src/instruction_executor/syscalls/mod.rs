@@ -15,7 +15,10 @@ use solana_rbpf::{
     memory_region::{AccessType, MemoryMapping},
     program::{BuiltinFunction, FunctionRegistry},
 };
-use solana_sdk::pubkey::{Pubkey, MAX_SEEDS, MAX_SEED_LEN};
+use solana_sdk::{
+    program::MAX_RETURN_DATA,
+    pubkey::{Pubkey, MAX_SEEDS, MAX_SEED_LEN},
+};
 
 use self::{mem_ops::SyscallMemcpy, sysvar::SyscallGetClockSysvar};
 
@@ -352,6 +355,97 @@ declare_builtin_function!(
     }
 );
 
+declare_builtin_function!(
+    /// Set return data
+    SyscallSetReturnData,
+    fn rust(
+        invoke_context: &mut InvokeContext,
+        addr: u64,
+        len: u64,
+        _arg3: u64,
+        _arg4: u64,
+        _arg5: u64,
+        memory_mapping: &mut MemoryMapping,
+    ) -> Result<u64, ErrorObj> {
+        if len > MAX_RETURN_DATA as u64 {
+            return Err(SyscallError::ReturnDataTooLarge(len, MAX_RETURN_DATA as u64).into());
+        }
+
+        let return_data = if len == 0 {
+            Vec::new()
+        } else {
+            translate_slice::<u8>(
+                memory_mapping,
+                addr,
+                len,
+                invoke_context.get_check_aligned(),
+                invoke_context.get_check_size(),
+            )?
+            .to_vec()
+        };
+
+        let program_id = *invoke_context.program_id();
+        *invoke_context.return_data_mut() = (program_id, return_data);
+
+        Ok(0)
+    }
+);
+
+declare_builtin_function!(
+    /// Get return data
+    SyscallGetReturnData,
+    fn rust(
+        invoke_context: &mut InvokeContext,
+        return_data_addr: u64,
+        length: u64,
+        program_id_addr: u64,
+        _arg4: u64,
+        _arg5: u64,
+        memory_mapping: &mut MemoryMapping,
+    ) -> Result<u64, ErrorObj> {
+        let (program_id, return_data) = invoke_context.return_data();
+        let length = length.min(return_data.len() as u64);
+        if length != 0 {
+            let return_data_result = translate_slice_mut::<u8>(
+                memory_mapping,
+                return_data_addr,
+                length,
+                invoke_context.get_check_aligned(),
+                invoke_context.get_check_size(),
+            )?;
+
+            let to_slice = return_data_result;
+            let from_slice = return_data
+                .get(..length as usize)
+                .ok_or(SyscallError::InvokeContextBorrowFailed)?;
+            if to_slice.len() != from_slice.len() {
+                return Err(SyscallError::InvalidLength.into());
+            }
+            to_slice.copy_from_slice(from_slice);
+
+            let program_id_result = translate_type_mut::<Pubkey>(
+                memory_mapping,
+                program_id_addr,
+                invoke_context.get_check_aligned(),
+            )?;
+
+            if !is_nonoverlapping(
+                to_slice.as_ptr() as usize,
+                length as usize,
+                program_id_result as *const _ as usize,
+                std::mem::size_of::<Pubkey>(),
+            ) {
+                return Err(SyscallError::CopyOverlapping.into());
+            }
+
+            *program_id_result = *program_id;
+        }
+
+        // Return the actual length, rather the length returned
+        Ok(return_data.len() as u64)
+    }
+);
+
 #[throws(Error)]
 pub fn get_syscalls() -> FunctionRegistry<BuiltinFunction<InvokeContext>> {
     let mut result = FunctionRegistry::<BuiltinFunction<InvokeContext>>::default();
@@ -459,8 +553,8 @@ pub fn get_syscalls() -> FunctionRegistry<BuiltinFunction<InvokeContext>> {
     // result.register_function_hashed(*b"sol_get_stack_height", SyscallGetStackHeight::vm)?;
 
     // Return data
-    // result.register_function_hashed(*b"sol_set_return_data", SyscallSetReturnData::vm)?;
-    // result.register_function_hashed(*b"sol_get_return_data", SyscallGetReturnData::vm)?;
+    result.register_function_hashed(*b"sol_set_return_data", SyscallSetReturnData::vm)?;
+    result.register_function_hashed(*b"sol_get_return_data", SyscallGetReturnData::vm)?;
 
     // Cross-program invocation
     // result.register_function_hashed(*b"sol_invoke_signed_c", SyscallInvokeSignedC::vm)?;

@@ -141,6 +141,7 @@ where
             executable.jit_compile().map_err(|e| anyhow!("{}", e))?;
         }
         self.executable = Some(executable);
+        *self.context.program_id_mut() = *program_id;
 
         Self::write_all(
             &mut self.buffer,
@@ -219,6 +220,8 @@ where
             ),
         ];
 
+        *self.context.return_data_mut() = (Pubkey::default(), vec![]);
+
         let mm = MemoryMapping::new(regions, config, sbpf_version).unwrap();
         let mut vm = EbpfVm::new(
             self.runtime.clone(),
@@ -235,6 +238,19 @@ where
             throw!(anyhow!(e.to_string()));
         };
     }
+
+    pub fn get_return_data(&self) -> Option<&(Pubkey, Vec<u8>)> {
+        let return_data = self.context.return_data();
+        if return_data.1.is_empty() {
+            return None;
+        }
+
+        Some(return_data)
+    }
+
+    // pub fn get_account(&self, i: usize) -> Account {
+
+    // }
 
     fn fill_write(
         buffer: &mut AlignedMemory<HOST_ALIGN>,
