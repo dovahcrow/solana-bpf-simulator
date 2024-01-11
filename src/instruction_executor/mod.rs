@@ -62,9 +62,9 @@ where
 {
     #[throws(Error)]
     pub fn new(instruction_size: usize, account_sizes: A) -> Self {
-        if instruction_size > 41 {
-            throw!(anyhow!("Instruction data too long"))
-        }
+        // if instruction_size > 41 {
+        //     throw!(anyhow!("Instruction data too long"))
+        // }
         let mut size = size_of::<u64>();
         for i in 0..account_sizes.len() {
             size += size_of::<u8>(); // dup
