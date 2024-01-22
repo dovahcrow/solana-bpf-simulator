@@ -7,7 +7,7 @@ use solana_sdk::{
 };
 
 use super::super::context::InvokeContext;
-use super::{translate_type_mut, ErrorObj, SUCCESS};
+use super::{translate_type_mut, ErrorObj as Error, SUCCESS};
 
 fn get_sysvar<T: std::fmt::Debug + Sysvar + SysvarId + Clone>(
     sysvar: Result<Arc<T>, InstructionError>,
@@ -15,7 +15,7 @@ fn get_sysvar<T: std::fmt::Debug + Sysvar + SysvarId + Clone>(
     check_aligned: bool,
     memory_mapping: &mut MemoryMapping,
     _invoke_context: &mut InvokeContext,
-) -> Result<u64, ErrorObj> {
+) -> Result<u64, Error> {
     let var = translate_type_mut::<T>(memory_mapping, var_addr, check_aligned)?;
 
     let sysvar: Arc<T> = sysvar?;
@@ -35,7 +35,7 @@ declare_builtin_function!(
         _arg4: u64,
         _arg5: u64,
         memory_mapping: &mut MemoryMapping,
-    ) -> Result<u64, ErrorObj> {
+    ) -> Result<u64, Error> {
         get_sysvar(
             invoke_context.sysvars().get_clock(),
             var_addr,

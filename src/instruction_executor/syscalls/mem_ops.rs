@@ -6,7 +6,7 @@ use solana_rbpf::{
 
 use super::super::{context::InvokeContext, syscall_errors::SyscallError};
 
-use super::{is_nonoverlapping, translate_slice, translate_slice_mut, ErrorObj};
+use super::{is_nonoverlapping, translate_slice, translate_slice_mut, ErrorObj as Error};
 
 fn memmove(
     invoke_context: &mut InvokeContext,
@@ -14,7 +14,7 @@ fn memmove(
     src_addr: u64,
     n: u64,
     memory_mapping: &MemoryMapping,
-) -> Result<u64, ErrorObj> {
+) -> Result<u64, Error> {
     let dst_ptr = translate_slice_mut::<u8>(
         memory_mapping,
         dst_addr,
@@ -41,7 +41,7 @@ fn memmove_non_contiguous(
     src_addr: u64,
     n: u64,
     memory_mapping: &MemoryMapping,
-) -> Result<u64, ErrorObj> {
+) -> Result<u64, Error> {
     let reverse = dst_addr.wrapping_sub(src_addr) < n;
     iter_memory_pair_chunks(
         AccessType::Load,
@@ -67,10 +67,10 @@ fn iter_memory_pair_chunks<T, F>(
     memory_mapping: &MemoryMapping,
     reverse: bool,
     mut fun: F,
-) -> Result<T, ErrorObj>
+) -> Result<T, Error>
 where
     T: Default,
-    F: FnMut(*const u8, *const u8, usize) -> Result<T, ErrorObj>,
+    F: FnMut(*const u8, *const u8, usize) -> Result<T, Error>,
 {
     let mut src_chunk_iter =
         MemoryChunkIterator::new(memory_mapping, src_access, src_addr, n_bytes)
@@ -195,7 +195,7 @@ impl<'a> MemoryChunkIterator<'a> {
         })
     }
 
-    fn region(&mut self, vm_addr: u64) -> Result<&'a MemoryRegion, ErrorObj> {
+    fn region(&mut self, vm_addr: u64) -> Result<&'a MemoryRegion, Error> {
         match self.memory_mapping.region(self.access_type, vm_addr) {
             Ok(region) => Ok(region),
             Err(error) => match error {
@@ -217,7 +217,7 @@ impl<'a> MemoryChunkIterator<'a> {
 }
 
 impl<'a> Iterator for MemoryChunkIterator<'a> {
-    type Item = Result<(&'a MemoryRegion, u64, usize), ErrorObj>;
+    type Item = Result<(&'a MemoryRegion, u64, usize), Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.vm_addr_start == self.vm_addr_end {
@@ -291,7 +291,7 @@ declare_builtin_function!(
         _arg4: u64,
         _arg5: u64,
         memory_mapping: &mut MemoryMapping,
-    ) -> Result<u64, ErrorObj> {
+    ) -> Result<u64, Error> {
         if !is_nonoverlapping(src_addr, n, dst_addr, n) {
             return Err(SyscallError::CopyOverlapping.into());
         }
