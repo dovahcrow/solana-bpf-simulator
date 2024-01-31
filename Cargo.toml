@@ -20,8 +20,8 @@ default = ["message", "instruction"]
 [dependencies]
 anyhow = "1"
 bincode = "1"
-bs58 = "0.4"
-clap = {version = "~4.1", features = ["derive", "env"]}
+bs58 = "0.5"
+clap = {version = "4", features = ["derive", "env"]}
 fehler = "1"
 getset = "0.1"
 num-traits = "0.2"
@@ -39,6 +39,7 @@ solana_rbpf = "~0.8"
 thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+url = "2"
 
 # [patch.crates-io]
 # solana-accounts-db = { path = "../solana-mole/accounts-db" }
