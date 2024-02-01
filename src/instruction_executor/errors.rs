@@ -7,4 +7,7 @@ pub enum FasterSBPFExecutorError {
 
     #[error("Account data is too long")]
     InvalidAccount,
+
+    #[error("Program has not been loaded")]
+    MissingProgram,
 }

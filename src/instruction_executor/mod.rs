@@ -210,7 +210,10 @@ where
         let len = self.heap.len();
         self.heap.as_slice_mut()[..len].fill(0);
 
-        let executable = self.executable.as_ref().unwrap();
+        let executable = self
+            .executable
+            .as_ref()
+            .ok_or(FasterSBPFExecutorError::MissingProgram)?;
 
         let config = executable.get_config();
         let sbpf_version = executable.get_sbpf_version();
