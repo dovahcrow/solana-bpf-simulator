@@ -9,7 +9,6 @@ use std::{
 
 use anyhow::Error;
 use fehler::throws;
-use solana_program_runtime::stable_log;
 use solana_rbpf::{
     declare_builtin_function,
     memory_region::{AccessType, MemoryMapping},
@@ -239,7 +238,16 @@ declare_builtin_function!(
             invoke_context.get_check_size(),
             true,
             &mut |string: &str| {
-                stable_log::program_log(&invoke_context.log_collector().clone(), string);
+                solana_program_runtime::log_collector::log::debug!(
+                    target: "solana_runtime::message_processor::stable_log",
+                    "Program log: {}",
+                    string
+                );
+
+                if let Some(log_collector) = invoke_context.log_collector_mut() {
+                    log_collector.log(&format!("Program log: {string}"));
+                }
+
                 Ok(0)
             },
         )?;

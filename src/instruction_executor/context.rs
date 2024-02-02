@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use getset::{Getters, MutGetters};
 use solana_program_runtime::{log_collector::LogCollector, sysvar_cache::SysvarCache};
 use solana_rbpf::vm::ContextObject;
@@ -11,7 +9,7 @@ pub struct InvokeContext {
     sysvars: SysvarCache,
     instruction_remaining: u64,
     #[getset(get_mut = "pub", get = "pub")]
-    log_collector: Option<Rc<RefCell<LogCollector>>>,
+    log_collector: Option<LogCollector>,
     #[getset(get_mut = "pub", get = "pub")]
     program_id: Pubkey,
     #[getset(get_mut = "pub", get = "pub")]
