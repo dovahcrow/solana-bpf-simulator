@@ -71,8 +71,12 @@ where
         );
 
         // Load programs from cache
-        self.loaded_programs_cache
-            .extract(s, &mut missing_programs, &mut loaded_programs_for_txs);
+        self.loaded_programs_cache.extract(
+            s,
+            &mut missing_programs,
+            &mut loaded_programs_for_txs,
+            false,
+        );
 
         // Load programs from account
         let loaded_programs: Vec<(Pubkey, Arc<LoadedProgram>)> = missing_programs
