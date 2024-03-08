@@ -141,6 +141,7 @@ where
         let mut executable = Executable::from_elf(&account.data(), self.runtime.clone())
             .map_err(|e| anyhow!("{}", e))?;
         if jit {
+            #[cfg(all(not(target_os = "windows"), target_arch = "x86_64"))]
             executable.jit_compile().map_err(|e| anyhow!("{}", e))?;
         }
         self.executable = Some(executable);
@@ -239,8 +240,11 @@ where
             config.stack_size(),
         );
 
+        #[cfg(all(not(target_os = "windows"), target_arch = "x86_64"))]
         let (_, result) =
             vm.execute_program(&executable, executable.get_compiled_program().is_none());
+        #[cfg(any(target_os = "windows", not(target_arch = "x86_64")))]
+        let (_, result) = vm.execute_program(&executable, true);
 
         if let StableResult::Err(e) = result {
             throw!(anyhow!(e.to_string()));
