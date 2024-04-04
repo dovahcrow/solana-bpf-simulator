@@ -20,13 +20,15 @@ use solana_rbpf::{
 };
 use solana_sdk::{
     account::{Account, ReadableAccount},
-    entrypoint::{BPF_ALIGN_OF_U128, HEAP_LENGTH, MAX_PERMITTED_DATA_INCREASE, NON_DUP_MARKER},
+    entrypoint::{
+        BPF_ALIGN_OF_U128, HEAP_LENGTH, MAX_PERMITTED_DATA_INCREASE, NON_DUP_MARKER, SUCCESS,
+    },
     instruction::InstructionError,
     pubkey::Pubkey,
 };
 
 pub use account_sizes::AccountSizes;
-pub use errors::FasterSBPFExecutorError;
+pub use errors::InstructionExecutorError;
 
 use context::InvokeContext;
 use syscalls::get_syscalls;
@@ -36,7 +38,7 @@ use syscalls::get_syscalls;
 /// 1. You cannot have multiple mutable accounts with same pubkey.
 /// 2. Account and instruction spaces are pre-allocated as well as # of accounts.
 #[derive(MutGetters, Getters)]
-pub struct SBPFInstructionExecutor<A> {
+pub struct InstructionExecutor<A> {
     #[getset(get_mut = "pub", get = "pub")]
     context: InvokeContext,
     runtime: Arc<BuiltinProgram<InvokeContext>>,
@@ -56,7 +58,7 @@ pub struct SBPFInstructionExecutor<A> {
     executable: Option<Executable<InvokeContext>>,
 }
 
-impl<A> SBPFInstructionExecutor<A>
+impl<A> InstructionExecutor<A>
 where
     A: AccountSizes,
 {
@@ -115,7 +117,7 @@ where
         let heap =
             AlignedMemory::<{ HOST_ALIGN }>::zero_filled(usize::try_from(HEAP_LENGTH).unwrap());
 
-        SBPFInstructionExecutor {
+        InstructionExecutor {
             instruction_size,
             account_sizes,
 
@@ -157,7 +159,7 @@ where
     #[throws(Error)]
     pub fn update_instruction(&mut self, instruction: &[u8]) {
         if instruction.len() > self.instruction_size {
-            throw!(FasterSBPFExecutorError::InvalidInstruction);
+            throw!(InstructionExecutorError::InvalidInstruction);
         }
 
         Self::write::<u64>(
@@ -186,7 +188,7 @@ where
     {
         let account_size = self.account_sizes.size(i);
         if account.data().len() > account_size {
-            throw!(FasterSBPFExecutorError::InvalidAccount);
+            throw!(InstructionExecutorError::InvalidAccount);
         }
 
         let offset = self.account_offsets[i];
@@ -214,7 +216,7 @@ where
         let executable = self
             .executable
             .as_ref()
-            .ok_or(FasterSBPFExecutorError::MissingProgram)?;
+            .ok_or(InstructionExecutorError::MissingProgram)?;
 
         let config = executable.get_config();
         let sbpf_version = executable.get_sbpf_version();
@@ -246,9 +248,11 @@ where
         #[cfg(any(target_os = "windows", not(target_arch = "x86_64")))]
         let (_, result) = vm.execute_program(&executable, true);
 
-        if let StableResult::Err(e) = result {
-            throw!(anyhow!(e.to_string()));
-        };
+        match result {
+            StableResult::Ok(code) if code == SUCCESS => {}
+            StableResult::Ok(code) => throw!(InstructionError::from(code)),
+            StableResult::Err(e) => throw!(anyhow!(e.to_string())),
+        }
     }
 
     pub fn get_return_data(&self) -> Option<&(Pubkey, Vec<u8>)> {

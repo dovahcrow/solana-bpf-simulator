@@ -2,8 +2,8 @@ mod errors;
 mod executor;
 mod loader;
 
-pub use errors::SolanaSimulatorError;
-pub use executor::{ExecutionRecord, SBPFMessageExecutor};
+pub use errors::MessageExecutorError;
+pub use executor::{ExecutionRecord, MessageExecutor};
 pub use loader::AccountLoader;
 
 use std::cmp::Ordering;

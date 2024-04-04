@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
-pub enum FasterSBPFExecutorError {
+pub enum InstructionExecutorError {
     #[error("Instruction is too long")]
     InvalidInstruction,
 
