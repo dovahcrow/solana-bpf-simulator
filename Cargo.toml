@@ -8,14 +8,10 @@ name = "solana-bpf-simulator"
 version = "0.1.3"
 edition = "2021"
 
-[[bin]]
-name = "solana-bpf-simulator"
-path = "src/main.rs"
-
 [features]
 instruction = []
 message = []
-default = ["message", "instruction"]
+default = ["instruction"]
 
 [dependencies]
 anyhow = "1"
@@ -27,14 +23,13 @@ getset = "0.1"
 num-traits = "0.2"
 once_cell = "1"
 serde = "1"
-solana-accounts-db = "~1.17.20"
-solana-bpf-loader-program = "~1.17.20"
-solana-client = "~1.17.20"
-solana-program-runtime = "~1.17.20"
-solana-runtime = "~1.17.20"
-solana-sdk = "~1.17.20"
-solana-zk-token-sdk = "~1.17.20"
-solana-loader-v4-program = "~1.17.20"
+solana-bpf-loader-program = "~1.16.27"
+solana-client = "~1.16.27"
+solana-program-runtime = "~1.16.27"
+solana-runtime = "~1.16.27"
+solana-sdk = "~1.16.27"
+solana-zk-token-sdk = "~1.16.27"
+solana-loader-v4-program = "~1.16.27"
 solana_rbpf = "~0.8"
 thiserror = "1"
 tracing = "0.1"
